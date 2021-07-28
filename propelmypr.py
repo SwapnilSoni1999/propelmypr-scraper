@@ -85,21 +85,24 @@ class Propel(Session):
 
     def __extract(self, extract, _json, result={}, parent=None):
         keys = extract.keys()
-        # ['entity']
-        # extract = { 'payload': { 'entity': { 'name': 'name', 'age': { 'function' } }  } }
         for k in keys:
             if type(extract[k]) is dict:
                 if 'function' in extract[k]:
                     method = extract[k]['function']
                     result[extract[k]['_name']] = method(parent)
+
                     del extract[k]['_name']
                     del extract[k]['function']
 
-                parent = _json[k] # payload, entity,
-                r = self.__extract(extract=extract[k], _json=parent, result=result, parent=parent)
-                result.update(r)
+
+                extractors = set(extract[k].keys())
+                if len(extractors):
+                    parent = _json[k]
+                    r = self.__extract(extract=extract[k], _json=parent, result=result, parent=parent)
+                    result.update(r)
             elif type(extract[k]) is str:
-                result[extract[k]] = parent[extract[k]]
+                result[extract[k]] = parent[k]
+        return result
 
 
     def get_outlet(self, outlet_id, extract=None):
