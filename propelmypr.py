@@ -125,7 +125,7 @@ class Propel(Session):
             print('Unauthorized! Trying to login again...')
             self.__login(self.email, self.password)
             print('Trying to fetch outlet again')
-            self.get_outlet(outlet_id=outlet_id, extract=extract)
+            return self.get_outlet(outlet_id=outlet_id, extract=extract)
         if not extract:
             return res.json()
         else:
