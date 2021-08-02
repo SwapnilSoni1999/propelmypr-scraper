@@ -2,6 +2,7 @@ from requests import Session
 from utils import asf_data
 from bs4 import BeautifulSoup
 import pickle
+from obj import PropelResult
 
 host = 'https://app.propelmypr.com'
 CLIENT_ID = "6m6c9u1ip7b2bmcs304orkek50"
@@ -104,8 +105,12 @@ class Propel(Session):
                 result[extract[k]] = parent[k]
         return result
 
+    def get_outlet_topics(self):
+        res = self.get('https://app.propelmypr.com/media/getOutletTopics')
+        return res.json()['payload']
 
-    def get_outlet(self, outlet_id, extract=None):
+
+    def get_outlet(self, outlet_id, extract=None) -> PropelResult:
         """
             extract = Key: Value pair
                 key: result json object key string
@@ -126,7 +131,28 @@ class Propel(Session):
             self.__login(self.email, self.password)
             print('Trying to fetch outlet again')
             return self.get_outlet(outlet_id=outlet_id, extract=extract)
-        if not extract:
-            return res.json()
-        else:
-            return self.__extract(extract, res.json())
+
+        outlet_json = res.json()
+        if extract:
+            extracted_data = self.__extract(extract, res.json())
+
+        return PropelResult(outlet_json, extracted_data)
+
+    def get_outlet_pitching(self, mediaOutletNameId, extract=None) -> PropelResult:
+        params = {
+            'mediaOutletNameId': mediaOutletNameId
+        }
+
+        res = self.get('https://app.propelmypr.com/mediaOutlet/getOutletPitchingPreferences', params=params)
+
+        if res.status_code == 401:
+            print('Unauthorized! Trying to login again...')
+            self.__login(self.email, self.password)
+            print('Trying to fetch pitching again')
+            return self.get_outlet_pitching(mediaOutletNameId=mediaOutletNameId, extract=extract)
+
+        pitching_json = res.json()
+        if extract:
+            extracted_data = self.__extract(extract, res.json())
+
+        return PropelResult(pitching_json, extracted_data)
