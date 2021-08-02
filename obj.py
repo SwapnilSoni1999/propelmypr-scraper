@@ -17,3 +17,7 @@ class JournalistResult():
         self.json = json
         self.extracted_data = extracted_data
         self.email = json['payload']['entity']['email']
+
+class OutletSearchResult():
+    def __init__(self, json, key) -> None:
+        self.data = json['payload'][key]

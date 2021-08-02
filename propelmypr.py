@@ -1,8 +1,14 @@
 from requests import Session
 from utils import asf_data
 from bs4 import BeautifulSoup
+from copy import deepcopy
 import pickle
-from obj import OutletResult, PitchingResult, JournalistResult
+from obj import (
+    OutletResult,
+    PitchingResult,
+    JournalistResult,
+    OutletSearchResult
+)
 
 host = 'https://app.propelmypr.com'
 CLIENT_ID = "6m6c9u1ip7b2bmcs304orkek50"
@@ -30,11 +36,11 @@ class Propel(Session):
         })
 
         try:
-            with open(email + '.jar', 'rb') as cred_file:
-                print('Credentials found!')
-                cookies = pickle.load(cred_file)
-                self.cookies.update(cookies)
-                print("Credentials loaded!")
+            cred_file = open(email + '.jar', 'rb')
+            print('Credentials found!')
+            cookies = pickle.load(cred_file)
+            self.cookies.update(cookies)
+            print("Credentials loaded!")
         except:
             print('No credentials found! Logging in...')
             self.get(host, allow_redirects=True)
@@ -79,18 +85,42 @@ class Propel(Session):
         with open(email + '.jar', 'wb') as cred_file:
             pickle.dump(res.cookies, cred_file)
             print("Login successful!")
-
+        # driver = Chrome()
+        # driver.get('https://app.propelmypr.com/')
+        # WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, 'signInFormUsername')))
+        # form = driver.find_element_by_xpath('/html/body/div[1]/div/div[2]/div[2]/div[2]/div[2]/div[2]/div/form')
+        # form.find_element_by_id('signInFormUsername').send_keys(email)
+        # form.find_element_by_id('signInFormPassword').send_keys(password)
+        # form.submit()
+        # WebDriverWait(driver, 10).until(EC.url_contains('dashboard'))
+        # cookies = driver.get_cookies()
+        # for cookie in cookies:
+        #     self.cookies.set(cookie['name'], cookie['value'])
+        # with open(email + '.jar', 'wb') as cred_file:
+        #     pickle.dump(self.cookies, cred_file)
+        #     print("Login successful!")
+        #     driver.quit()
 
     def ping(self):
-        self.get('https://app.propelmypr.com/general/ping')
+        res = self.get('https://app.propelmypr.com/general/ping')
+
+        if res.status_code == 401:
+            print('Unauthorized! Trying to login again...')
+            self.__login(self.email, self.password)
+            print('Trying to fetch outlet again')
+            return self.ping()
+        else:
+            return True
 
     def __extract(self, extract, _json, result={}, parent=None):
         keys = extract.keys()
         for k in keys:
             if type(extract[k]) is dict:
                 if 'function' in extract[k]:
+                    if parent is None:
+                        parent = _json[k]
                     method = extract[k]['function']
-                    result[extract[k]['_name']] = method(parent)
+                    result[extract[k]['_name']] = method(deepcopy(parent))
 
                     del extract[k]['_name']
                     del extract[k]['function']
@@ -99,21 +129,32 @@ class Propel(Session):
                 extractors = set(extract[k].keys())
                 if len(extractors):
                     parent = _json[k]
-                    r = self.__extract(extract=extract[k], _json=parent, result=result, parent=parent)
+                    print(type(parent), k)
+                    r = self.__extract(extract=extract[k], _json=deepcopy(parent), result=result, parent=parent)
                     result.update(r)
             elif type(extract[k]) is str:
                 try:
                     result[extract[k]] = parent[k]
                 except: pass
-        return result
+        return deepcopy(result)
 
     def get_outlet_topics(self):
         res = self.get('https://app.propelmypr.com/media/getOutletTopics')
-        return list(filter(lambda x: x is not None, res.json()['payload']))
+        if res.status_code == 401:
+            print('Unauthorized! Trying to login again...')
+            self.__login(self.email, self.password)
+            print('Trying to fetch outlet again')
+            return self.get_outlet_topics()
+        return list(filter(None, res.json()['payload']))
 
     def get_journalist_topics(self):
         res = self.get('https://app.propelmypr.com/media/getJournalistTopics')
-        return list(filter(lambda x: x is not None, res.json()['payload']))
+        if res.status_code == 401:
+            print('Unauthorized! Trying to login again...')
+            self.__login(self.email, self.password)
+            print('Trying to fetch outlet again')
+            return self.get_journalist_topics()
+        return list(filter(None, res.json()['payload']))
 
 
     def get_outlet(self, outlet_id, extract=None) -> OutletResult:
@@ -140,7 +181,7 @@ class Propel(Session):
 
         outlet_json = res.json()
         if extract:
-            extracted_data = self.__extract(extract, outlet_json)
+            extracted_data = self.__extract(extract, outlet_json, result={}, parent=None)
 
         return OutletResult(outlet_json, extracted_data)
 
@@ -158,7 +199,7 @@ class Propel(Session):
 
         pitching_json = res.json()
         if extract:
-            extracted_data = self.__extract(extract=extract, _json=pitching_json)
+            extracted_data = self.__extract(extract=extract, _json=pitching_json, result={}, parent=None)
 
         return PitchingResult(pitching_json, extracted_data)
 
@@ -178,7 +219,7 @@ class Propel(Session):
         journalist_json = res.json()
 
         if extract:
-            extracted_data = self.__extract(extract=extract, _json=journalist_json)
+            extracted_data = self.__extract(extract=extract, _json=journalist_json, result={}, parent=None)
 
         return JournalistResult(journalist_json, extracted_data)
 
@@ -198,6 +239,42 @@ class Propel(Session):
         pitching_json = res.json()
 
         if extract:
-            extracted_data = self.__extract(extract=extract, _json=pitching_json)
+            extracted_data = self.__extract(extract=extract, _json=pitching_json, result={}, parent=None)
 
         return PitchingResult(pitching_json, extracted_data)
+
+    def search_outlets_by_topic(self, topics: list, query="", page=1, pageSize=51) -> OutletSearchResult:
+        payload = {
+            "q": query,
+            "outletId": None,
+            "advancedSearchFields": [
+                {
+                    "fieldKey": "topic",
+                    "multiValue": True,
+                    "operator": "EXACT_PHRASE",
+                    "term": ",".join(topics)
+                }
+            ],
+            "page": page,
+            "pageSize": pageSize
+        }
+        res = self.post('https://app.propelmypr.com/media/searchOutlets', json=payload)
+        return OutletSearchResult(res.json(), 'outlets')
+
+    def search_journalists_by_topic(self, topics: list, query="", page=1, pageSize=51) -> OutletSearchResult:
+        payload = {
+            "q": query,
+            "outletId": None,
+            "advancedSearchFields": [
+                {
+                    "fieldKey": "topic",
+                    "multiValue": True,
+                    "operator": "EXACT_PHRASE",
+                    "term": ",".join(topics)
+                }
+            ],
+            "page": page,
+            "pageSize": pageSize
+        }
+        res = self.post('https://app.propelmypr.com/media/searchJournalists', json=payload)
+        return OutletSearchResult(res.json(), 'journalists')

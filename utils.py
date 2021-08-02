@@ -50,13 +50,9 @@ def asf_data(username: str, user_poll_id: str, client_id: str):
 def percentage(n, total):
     return "{:.2f}%".format((n/total) * 100)
 
-class CsvHandler:
-    def __init__(self, jsonKeys: list, filename) -> None:
-        fp = open(filename, 'w')
-        self.fp = fp
-        writer = csv.writer(fp)
-        self.writer = writer
-        writer.writerow(jsonKeys)
-
-    def close(self):
-        self.fp.close()
+def json_to_csv(fieldnames, data, filename):
+    f = open(filename, "w")
+    writer = csv.DictWriter(f, fieldnames=fieldnames)
+    writer.writeheader()
+    writer.writerows(data)
+    f.close()

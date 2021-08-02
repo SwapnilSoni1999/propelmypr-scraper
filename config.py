@@ -11,6 +11,7 @@ from functions import (
 outlet_config = {
     'payload': {
         'entity': {
+            'name': 'Name',
             'addressLine1': {
                 'function': build_address,
                 '_name': 'Address',
@@ -18,7 +19,6 @@ outlet_config = {
             'state': 'State',
             'city': 'City',
             'country': 'Country',
-            'name': 'Name',
             'phone': 'Phone Number',
             'email': 'Email Address',
             'topics': {
