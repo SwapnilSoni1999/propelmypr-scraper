@@ -2,7 +2,7 @@ from requests import Session
 from utils import asf_data
 from bs4 import BeautifulSoup
 import pickle
-from obj import PropelResult
+from obj import OutletResult, PitchingResult, JournalistResult
 
 host = 'https://app.propelmypr.com'
 CLIENT_ID = "6m6c9u1ip7b2bmcs304orkek50"
@@ -102,15 +102,21 @@ class Propel(Session):
                     r = self.__extract(extract=extract[k], _json=parent, result=result, parent=parent)
                     result.update(r)
             elif type(extract[k]) is str:
-                result[extract[k]] = parent[k]
+                try:
+                    result[extract[k]] = parent[k]
+                except: pass
         return result
 
     def get_outlet_topics(self):
         res = self.get('https://app.propelmypr.com/media/getOutletTopics')
-        return res.json()['payload']
+        return list(filter(lambda x: x is not None, res.json()['payload']))
+
+    def get_journalist_topics(self):
+        res = self.get('https://app.propelmypr.com/media/getJournalistTopics')
+        return list(filter(lambda x: x is not None, res.json()['payload']))
 
 
-    def get_outlet(self, outlet_id, extract=None) -> PropelResult:
+    def get_outlet(self, outlet_id, extract=None) -> OutletResult:
         """
             extract = Key: Value pair
                 key: result json object key string
@@ -134,15 +140,14 @@ class Propel(Session):
 
         outlet_json = res.json()
         if extract:
-            extracted_data = self.__extract(extract, res.json())
+            extracted_data = self.__extract(extract, outlet_json)
 
-        return PropelResult(outlet_json, extracted_data)
+        return OutletResult(outlet_json, extracted_data)
 
-    def get_outlet_pitching(self, mediaOutletNameId, extract=None) -> PropelResult:
+    def get_outlet_pitching(self, mediaOutletNameId, extract=None) -> PitchingResult:
         params = {
             'mediaOutletNameId': mediaOutletNameId
         }
-
         res = self.get('https://app.propelmypr.com/mediaOutlet/getOutletPitchingPreferences', params=params)
 
         if res.status_code == 401:
@@ -153,6 +158,46 @@ class Propel(Session):
 
         pitching_json = res.json()
         if extract:
-            extracted_data = self.__extract(extract, res.json())
+            extracted_data = self.__extract(extract=extract, _json=pitching_json)
 
-        return PropelResult(pitching_json, extracted_data)
+        return PitchingResult(pitching_json, extracted_data)
+
+    def get_journalist(self, journalist_id, extract=None) -> JournalistResult:
+        params = {
+            'id': journalist_id
+        }
+
+        res = self.get('https://app.propelmypr.com/media/getJournalist', params=params)
+
+        if res.status_code == 401:
+            print('Unauthorized! Trying to login again...')
+            self.__login(self.email, self.password)
+            print('Trying to fetch pitching again')
+            return self.get_journalist(journalist_id=journalist_id, extract=extract)
+
+        journalist_json = res.json()
+
+        if extract:
+            extracted_data = self.__extract(extract=extract, _json=journalist_json)
+
+        return JournalistResult(journalist_json, extracted_data)
+
+    def get_journalist_pitching(self, journalist_email, extract=None) -> PitchingResult:
+        params = {
+            'email': journalist_email
+        }
+
+        res = self.get('https://app.propelmypr.com/contact/getContactPitchingPreferencesByEmail', params=params)
+
+        if res.status_code == 401:
+            print('Unauthorized! Trying to login again...')
+            self.__login(self.email, self.password)
+            print('Trying to fetch pitching again')
+            return self.get_journalist_pitching(journalist_email=journalist_email, extract=extract)
+
+        pitching_json = res.json()
+
+        if extract:
+            extracted_data = self.__extract(extract=extract, _json=pitching_json)
+
+        return PitchingResult(pitching_json, extracted_data)
