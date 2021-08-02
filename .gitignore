@@ -165,3 +165,4 @@ hash.js
 jr.py
 *.jar
 run.py
+*.csv
