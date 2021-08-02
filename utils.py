@@ -5,6 +5,7 @@ import hashlib
 from base64 import b64encode
 import json
 from time import time
+import csv
 
 def code_verifier():
     chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
@@ -45,3 +46,17 @@ def asf_data(username: str, user_poll_id: str, client_id: str):
         "version": lib_version
     }
     return b64encode(json.dumps(asf).encode('utf-8')).decode()
+
+def percentage(n, total):
+    return "{:.2f}%".format((n/total) * 100)
+
+class CsvHandler:
+    def __init__(self, jsonKeys: list, filename) -> None:
+        fp = open(filename, 'w')
+        self.fp = fp
+        writer = csv.writer(fp)
+        self.writer = writer
+        writer.writerow(jsonKeys)
+
+    def close(self):
+        self.fp.close()
