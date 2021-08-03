@@ -5,12 +5,22 @@ from functions import (
     global_open_rate,
     global_response_rate,
     merge_socials,
-    merge_topics
+    merge_topics,
+    build_url_outlet,
+    build_url_journalist
 )
 
 outlet_config = {
     'payload': {
         'entity': {
+            'outletId': {
+                'function': build_url_outlet,
+                '_name': 'Outlet URL'
+            },
+            'journalistId': {
+                'function': build_url_journalist,
+                '_name': 'Journalist URL'
+            },
             'name': 'Name',
             'addressLine1': {
                 'function': build_address,
@@ -63,4 +73,6 @@ pitching_config = {
         }
     }
 }
+
+THREADS = 10
 

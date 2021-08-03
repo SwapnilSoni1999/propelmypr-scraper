@@ -3,6 +3,7 @@ from config import (
     outlet_config,
     pitching_config
 )
+import formatters
 import utils
 from copy import deepcopy
 
@@ -32,6 +33,9 @@ def fetch_all_outlets():
     for outlet_id in outlet_ids:
         print(count, 'Outletid', outlet_id)
         outlet_data = scrape_outlet(outlet_id)
+        print('Before:', outlet_data)
+        outlet_data = formatters.seperate_socials(outlet_data['Social Media Urls'], outlet_data)
+        print('After', outlet_data)
         final_data.append(outlet_data)
         count += 1
 

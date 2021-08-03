@@ -50,3 +50,15 @@ def best_pitching_day(parent):
             if val == max_val:
                 return key
     except: return None
+
+def build_url_journalist(parent):
+    entity = parent.copy()
+    try:
+        return 'https://app.propelmypr.com/app-media-db/journalists/' + str(entity['journalistId'])
+    except: return None
+
+def build_url_outlet(parent):
+    entity = parent.copy()
+    try:
+        return 'https://app.propelmypr.com/app-media-db/outlets/' + str(entity['outletId'])
+    except: return None
