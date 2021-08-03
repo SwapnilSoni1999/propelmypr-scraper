@@ -1,7 +1,6 @@
 import utils
 
 def build_address(parent):
-    print('Build address', parent)
     ret = ''
     k1 = 'addressLine1'
     k2 = 'addressLine2'
@@ -12,20 +11,27 @@ def build_address(parent):
     return ret
 
 def merge_topics(parent):
-    return ','.join(parent['topics'])
+    try:
+        return ','.join(parent['topics'])
+    except:
+        return None
 
 def merge_socials(parent):
     return ','.join(list(map(lambda x: x['url'], parent['socials'])))
 
 def global_open_rate(parent):
-    total = parent['numSent']
-    n = parent['numOpened']
-    return utils.percentage(n, total)
+    try:
+        total = parent['numSent']
+        n = parent['numOpened']
+        return utils.percentage(n, total)
+    except: return None
 
 def global_response_rate(parent):
-    total = parent['numSent']
-    n = parent['numResponded']
-    return utils.percentage(n, total)
+    try:
+        total = parent['numSent']
+        n = parent['numResponded']
+        return utils.percentage(n, total)
+    except: return None
 
 def best_pitching_time(parent):
     try:

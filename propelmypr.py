@@ -13,6 +13,44 @@ from obj import (
 host = 'https://app.propelmypr.com'
 CLIENT_ID = "6m6c9u1ip7b2bmcs304orkek50"
 
+def deep_copy_params(to_call):
+    def f(*args, **kwargs):
+        return to_call(*(deepcopy(x) for x in args),
+                       **{k: deepcopy(v) for k, v in kwargs.items()})
+    return f
+
+@deep_copy_params
+def _extract(extract: dict, _json: dict):
+    result = {}
+    parent = None
+    keys = extract.keys()
+    # print('_json', _json)
+    for k in keys:
+        if type(extract[k]) is dict:
+            if 'function' in extract[k]:
+                if parent is None:
+                    parent = _json
+                method = extract[k]['function']
+                result[extract[k]['_name']] = method(deepcopy(parent))
+
+                del extract[k]['_name']
+                del extract[k]['function']
+
+
+            extractors = set(extract[k].keys())
+            if len(extractors):
+                parent = _json[k]
+                r = _extract(extract=extract[k], _json=parent)
+                result.update(r)
+        elif type(extract[k]) is str:
+            if parent is None:
+                parent = _json
+            # print("parent", parent)
+            try:
+                result[extract[k]] = parent[k]
+            except: result[extract[k]] = None
+    return deepcopy(result)
+
 class Propel(Session):
     def __init__(self, email=None, password=None) -> None:
         if email is None or password is None:
@@ -112,32 +150,6 @@ class Propel(Session):
         else:
             return True
 
-    def __extract(self, extract, _json, result={}, parent=None):
-        keys = extract.keys()
-        for k in keys:
-            if type(extract[k]) is dict:
-                if 'function' in extract[k]:
-                    if parent is None:
-                        parent = _json[k]
-                    method = extract[k]['function']
-                    result[extract[k]['_name']] = method(deepcopy(parent))
-
-                    del extract[k]['_name']
-                    del extract[k]['function']
-
-
-                extractors = set(extract[k].keys())
-                if len(extractors):
-                    parent = _json[k]
-                    print(type(parent), k)
-                    r = self.__extract(extract=extract[k], _json=deepcopy(parent), result=result, parent=parent)
-                    result.update(r)
-            elif type(extract[k]) is str:
-                try:
-                    result[extract[k]] = parent[k]
-                except: pass
-        return deepcopy(result)
-
     def get_outlet_topics(self):
         res = self.get('https://app.propelmypr.com/media/getOutletTopics')
         if res.status_code == 401:
@@ -181,7 +193,7 @@ class Propel(Session):
 
         outlet_json = res.json()
         if extract:
-            extracted_data = self.__extract(extract, outlet_json, result={}, parent=None)
+            extracted_data = _extract(extract, outlet_json)
 
         return OutletResult(outlet_json, extracted_data)
 
@@ -199,7 +211,7 @@ class Propel(Session):
 
         pitching_json = res.json()
         if extract:
-            extracted_data = self.__extract(extract=extract, _json=pitching_json, result={}, parent=None)
+            extracted_data = _extract(extract=extract, _json=pitching_json)
 
         return PitchingResult(pitching_json, extracted_data)
 
@@ -219,7 +231,7 @@ class Propel(Session):
         journalist_json = res.json()
 
         if extract:
-            extracted_data = self.__extract(extract=extract, _json=journalist_json, result={}, parent=None)
+            extracted_data = _extract(extract=extract, _json=journalist_json)
 
         return JournalistResult(journalist_json, extracted_data)
 
@@ -239,7 +251,7 @@ class Propel(Session):
         pitching_json = res.json()
 
         if extract:
-            extracted_data = self.__extract(extract=extract, _json=pitching_json, result={}, parent=None)
+            extracted_data = _extract(extract=extract, _json=pitching_json)
 
         return PitchingResult(pitching_json, extracted_data)
 

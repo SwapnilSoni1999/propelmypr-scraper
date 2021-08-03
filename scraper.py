@@ -11,15 +11,14 @@ pr = Propel(email='marty@businessgrowthstrategist.com',
 
 
 def scrape_outlet(outlet_id):
-    outlet_data = pr.get_outlet(outlet_id, extract=outlet_config)
+    outlet_data = pr.get_outlet(outlet_id, extract=deepcopy(outlet_config))
     pitching_data = pr.get_outlet_pitching(outlet_data.mediaOutletNameId, extract=deepcopy(pitching_config))
     outlet_data.extracted_data.update(pitching_data.extracted_data)
     return deepcopy(outlet_data.extracted_data)
 
 def scrape_journalist(journalist_id):
-    journalist_data = pr.get_journalist(journalist_id, extract=outlet_config)
+    journalist_data = pr.get_journalist(journalist_id, extract=deepcopy(outlet_config))
     pitching_data = pr.get_journalist_pitching(journalist_data.email, extract=deepcopy(pitching_config))
-    print(pitching_config)
     journalist_data.extracted_data.update(pitching_data.extracted_data)
     return deepcopy(journalist_data.extracted_data)
 
@@ -35,8 +34,6 @@ def fetch_all_outlets():
         outlet_data = scrape_outlet(outlet_id)
         final_data.append(outlet_data)
         count += 1
-        if count == 5:
-            break
 
     print(final_data)
     utils.json_to_csv(fieldnames=final_data[0].keys(), data=final_data, filename='outlet.csv')
