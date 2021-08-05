@@ -10,6 +10,7 @@ import utils
 from copy import deepcopy
 import queue
 import time
+import cache
 
 pr = Propel(email='marty@businessgrowthstrategist.com',
     password='G@ipUav6MoZp5!mGk5*9')
@@ -27,34 +28,44 @@ class Outlet:
         outlet_data.extracted_data.update(pitching_data.extracted_data)
         return deepcopy(outlet_data.extracted_data)
 
-    def run_task(self, ids: list):
+    def run_task(self, ids: list, total: int):
         for outlet_id in ids:
-            print(self.bus.qsize(), 'Outletid', outlet_id)
+            print(f'{self.bus.qsize()}/{total}', 'Outletid', outlet_id, end='\r')
             outlet_data = self.scrape_outlet(outlet_id)
             outlet_data = formatters.seperate_socials(outlet_data['Social Media Urls'], outlet_data)
             outlet_data = formatters.make_url(outlet_data, 'outlet')
             self.bus.put_nowait(outlet_data)
+        print()
 
     def scrape(self):
         topics = pr.get_outlet_topics() #temp
-        res = pr.search_outlets_by_topic([topics[0]])
-        outlet_ids = list(map(lambda x: x['entity']['outletId'], res.data)) #temporary now
+        completed_topics = cache.get_topics('outlet')
 
-        chunks = utils.chunks(outlet_ids, int(len(outlet_ids)/THREADS))
-        threads = []
-        for c in chunks:
-            x = threading.Thread(target=self.run_task, args=(c,))
-            x.start()
-            threads.append(x)
-            time.sleep(1)
+        remaining_topics = list(set(topics).difference(completed_topics))
+        count = 1
+        for topic in remaining_topics:
+            print("Scraping topic:", topic)
+            print(f"> Count: {count}/{len(remaining_topics)}")
+            res = pr.search_outlets_by_topic([topic])
+            outlet_ids = list(map(lambda x: x['entity']['outletId'], res.data))
 
-        for t in threads: t.join()
+            chunks = utils.chunks(outlet_ids, int(len(outlet_ids)/THREADS))
+            threads = []
+            for c in chunks:
+                x = threading.Thread(target=self.run_task, args=(c, len(outlet_ids)))
+                x.start()
+                threads.append(x)
+                time.sleep(1)
 
-        final_data = []
-        while not self.bus.empty():
-            final_data.append(self.bus.get())
-        utils.json_to_csv(fieldnames=final_data[0].keys(), data=final_data, filename='outlet.csv')
-        print('Saved Outlets to outlet.csv!')
+            for t in threads: t.join()
+
+            final_data = []
+            while not self.bus.empty():
+                final_data.append(self.bus.get())
+            utils.json_to_csv(fieldnames=final_data[0].keys(), data=final_data, filename='outlet.csv')
+            cache.checkpoint('outlet', topic)
+            count += 1
+            print(f'Saved Outlets to outlet_{topic}.csv!')
 
 class Journalist:
     def __init__(self) -> None:
@@ -69,39 +80,53 @@ class Journalist:
         journalist_data.extracted_data.update(pitching_data.extracted_data)
         return deepcopy(journalist_data.extracted_data)
 
-    def run_task(self, ids: list):
+    def run_task(self, ids: list, total: int):
         for journalist_id in ids:
-            print(self.bus.qsize(), 'Journalist id:', journalist_id)
+            print(f'{self.bus.qsize()}/{total}', 'Journalist id:', journalist_id, end='\r')
             journalist_data = self.scrape_journalist(journalist_id)
             journalist_data = formatters.seperate_socials(journalist_data['Social Media Urls'], journalist_data)
             journalist_data = formatters.make_url(journalist_data, 'journalist')
             self.bus.put_nowait(journalist_data)
+        print()
 
     def scrape(self):
         pr.ping()
-        topics = pr.get_journalist_topics() # temporary
-        res = pr.search_journalists_by_topic([topics[0]]) #for now first topic only
-        journalist_ids = list(map(lambda x: x['entity']['journalistId'], res.data))
+        completed_topics = cache.get_topics('journalist')
+        topics = pr.get_journalist_topics()
 
-        chunks = utils.chunks(journalist_ids, int(len(journalist_ids)/THREADS))
-        threads = []
-        for c in chunks:
-            x = threading.Thread(target=self.run_task, args=(c,))
-            x.start()
-            threads.append(x)
-            time.sleep(1)
+        remaining_topics = list(set(topics).difference(completed_topics))
 
-        for t in threads: t.join()
+        count = 1
+        for topic in remaining_topics:
+            print("Scraping topic:", topic)
+            print(f"> Count: {count}/{len(remaining_topics)}")
+            res = pr.search_journalists_by_topic([topic])
+            journalist_ids = list(map(lambda x: x['entity']['journalistId'], res.data))
 
-        final_data = []
-        while not self.bus.empty():
-            final_data.append(self.bus.get())
-        utils.json_to_csv(fieldnames=final_data[0].keys(), data=final_data, filename='journalist.csv')
-        print('Saved Journalists to journalist.csv!')
+            chunks = utils.chunks(journalist_ids, int(len(journalist_ids)/THREADS))
+            threads = []
+            for c in chunks:
+                x = threading.Thread(target=self.run_task, args=(c, len(journalist_ids)))
+                x.start()
+                threads.append(x)
+                time.sleep(1)
 
-outlet = Outlet()
-journalist = Journalist()
+            for t in threads: t.join()
 
-outlet.scrape()
-journalist.scrape()
+            final_data = []
+            while not self.bus.empty():
+                final_data.append(self.bus.get())
+            utils.json_to_csv(fieldnames=final_data[0].keys(), data=final_data, filename='journalist.csv')
+            cache.checkpoint('journalist', topic)
+            count += 1
+            print(f'Saved Journalists to journalist_{topic}.csv!')
+
+if __name__ == '__main__':
+    cache.load()
+
+    outlet = Outlet()
+    journalist = Journalist()
+
+    outlet.scrape()
+    journalist.scrape()
 

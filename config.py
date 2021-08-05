@@ -9,6 +9,7 @@ from functions import (
 )
 
 THREADS = 5
+CACHE_FILE = '.checkpoint'
 
 outlet_config = {
     'payload': {

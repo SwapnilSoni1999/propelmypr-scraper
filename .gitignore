@@ -166,3 +166,4 @@ jr.py
 *.jar
 run.py
 *.csv
+.checkpoint
