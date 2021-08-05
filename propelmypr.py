@@ -7,7 +7,7 @@ from obj import (
     OutletResult,
     PitchingResult,
     JournalistResult,
-    OutletSearchResult
+    SearchResult
 )
 
 host = 'https://app.propelmypr.com'
@@ -209,11 +209,14 @@ class Propel(Session):
             print('Trying to fetch pitching again')
             return self.get_outlet_pitching(mediaOutletNameId=mediaOutletNameId, extract=extract)
 
-        pitching_json = res.json()
-        if extract:
-            extracted_data = _extract(extract=extract, _json=pitching_json)
+        try:
+            pitching_json = res.json()
+            if extract:
+                extracted_data = _extract(extract=extract, _json=pitching_json)
 
-        return PitchingResult(pitching_json, extracted_data)
+            return PitchingResult(pitching_json, extracted_data)
+        except:
+            pass
 
     def get_journalist(self, journalist_id, extract=None) -> JournalistResult:
         params = {
@@ -255,7 +258,7 @@ class Propel(Session):
 
         return PitchingResult(pitching_json, extracted_data)
 
-    def search_outlets_by_topic(self, topics: list, query="", page=1, pageSize=51) -> OutletSearchResult:
+    def search_outlets_by_topic(self, topics: list, query="", page=1, pageSize=51) -> SearchResult:
         payload = {
             "q": query,
             "outletId": None,
@@ -271,9 +274,9 @@ class Propel(Session):
             "pageSize": pageSize
         }
         res = self.post('https://app.propelmypr.com/media/searchOutlets', json=payload)
-        return OutletSearchResult(res.json(), 'outlets')
+        return SearchResult(res.json(), 'outlets', pageSize)
 
-    def search_journalists_by_topic(self, topics: list, query="", page=1, pageSize=51) -> OutletSearchResult:
+    def search_journalists_by_topic(self, topics: list, query="", page=1, pageSize=51) -> SearchResult:
         payload = {
             "q": query,
             "outletId": None,
@@ -289,4 +292,4 @@ class Propel(Session):
             "pageSize": pageSize
         }
         res = self.post('https://app.propelmypr.com/media/searchJournalists', json=payload)
-        return OutletSearchResult(res.json(), 'journalists')
+        return SearchResult(res.json(), 'journalists', pageSize)

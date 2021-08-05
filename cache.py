@@ -1,13 +1,13 @@
 from os import path
 from config import CACHE_FILE
-import pickle
+import json
 
 cache_config = {
     'journalist': {
-        'topics': set()
+        'topics': []
     },
     'outlet': {
-        'topics': set()
+        'topics': []
     }
 }
 
@@ -18,7 +18,7 @@ def find(lst, key, value):
     return -1
 
 def __create():
-    pickle.dump(cache_config, open(CACHE_FILE, 'wb'))
+    json.dump(cache_config, open(CACHE_FILE, 'w'))
     print('Saved cache file!')
 
 def load():
@@ -26,11 +26,14 @@ def load():
         print('Cache file doesnt exists! Creating new one...')
         __create()
     else:
-        config = pickle.load(open(CACHE_FILE, 'rb'))
-        cache_config.update(config)
+        try:
+            config = json.load(open(CACHE_FILE, 'r'))
+            cache_config.update(config)
+        except json.JSONDecodeError:
+            __create()
 
 def checkpoint(whom, topic):
-    cache_config[whom]['topics'].add(topic)
+    cache_config[whom]['topics'].append(topic)
 
 def get_topics(entity):
     return cache_config[entity]['topics']

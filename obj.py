@@ -1,3 +1,4 @@
+import math
 class OutletResult():
     def __init__(self, json, extracted_data=None) -> None:
         self.json = json
@@ -18,6 +19,12 @@ class JournalistResult():
         self.extracted_data = extracted_data
         self.email = json['payload']['entity']['email']
 
-class OutletSearchResult():
-    def __init__(self, json, key) -> None:
-        self.data = json['payload'][key]
+class SearchResult():
+    def __init__(self, json, key, pageSize) -> None:
+        try:
+            self.data = json['payload'][key]
+            self.totalPages = math.ceil(json['payload']['total'] / pageSize)
+            self.total = json['payload']['total']
+        except:
+            print("\n\n===========")
+            print(json)
