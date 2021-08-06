@@ -45,7 +45,9 @@ class Outlet:
         remaining_topics = list(set(topics).difference(set(completed_topics)))
         count = 1
         for topic in remaining_topics:
+            topic = topic.replace('/', '_')
             if path.exists(f'outlet_{topic}.csv'):
+                count+=1
                 continue
             print("Scraping topic:", topic)
             print(f"> Count: {count}/{len(remaining_topics)}")
@@ -109,7 +111,9 @@ class Journalist:
 
         count = 1
         for topic in remaining_topics:
+            topic = topic.replace('/', '_')
             if path.exists(f'journalist_{topic}.csv'):
+                count+=1
                 continue
             print("Scraping topic:", topic)
             print(f"> Count: {count}/{len(remaining_topics)}")
