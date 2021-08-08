@@ -8,7 +8,7 @@ from functions import (
     merge_topics,
 )
 
-THREADS = 100
+THREADS = 200
 CACHE_FILE = '.checkpoint'
 
 outlet_config = {

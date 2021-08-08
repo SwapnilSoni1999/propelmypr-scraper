@@ -259,22 +259,28 @@ class Propel(Session):
         return PitchingResult(pitching_json, extracted_data)
 
     def search_outlets_by_topic(self, topics: list, query="", page=1, pageSize=51) -> SearchResult:
-        payload = {
-            "q": query,
-            "outletId": None,
-            "advancedSearchFields": [
-                {
-                    "fieldKey": "topic",
-                    "multiValue": True,
-                    "operator": "EXACT_PHRASE",
-                    "term": ",".join(topics)
-                }
-            ],
-            "page": page,
-            "pageSize": pageSize
-        }
-        res = self.post('https://app.propelmypr.com/media/searchOutlets', json=payload)
-        return SearchResult(res.json(), 'outlets', pageSize)
+        try:
+            payload = {
+                "q": query,
+                "outletId": None,
+                "advancedSearchFields": [
+                    {
+                        "fieldKey": "topic",
+                        "multiValue": True,
+                        "operator": "EXACT_PHRASE",
+                        "term": ",".join(topics)
+                    }
+                ],
+                "page": page,
+                "pageSize": pageSize
+            }
+            res = self.post('https://app.propelmypr.com/media/searchOutlets', json=payload)
+            if res.status_code == 200:
+                return SearchResult(res.json(), 'outlets', pageSize)
+            else:
+                return None
+        except:
+            pass
 
     def search_journalists_by_topic(self, topics: list, query="", page=1, pageSize=51) -> SearchResult:
         payload = {

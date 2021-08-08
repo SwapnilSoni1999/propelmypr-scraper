@@ -12,6 +12,7 @@ import queue
 import time
 import cache
 from os import path
+import math
 
 pr = Propel(email='marty@businessgrowthstrategist.com',
     password='G@ipUav6MoZp5!mGk5*9')
@@ -35,7 +36,7 @@ class Outlet:
             outlet_data = self.scrape_outlet(outlet_id)
             outlet_data = formatters.seperate_socials(outlet_data['Social Media Urls'], outlet_data)
             outlet_data = formatters.make_url(outlet_data, 'outlet')
-            self.bus.put_nowait(outlet_data)
+            self.bus.put(outlet_data)
             print(f'{self.bus.qsize()}/{total}', 'Outletid', outlet_id, end='\r')
 
     def scrape(self):
@@ -53,17 +54,23 @@ class Outlet:
             print(f"> Count: {count}/{len(remaining_topics)}")
             res = pr.search_outlets_by_topic([topic])
             outlet_ids = list(map(lambda x: x['entity']['outletId'], res.data))
-            for page_no in range(2, res.totalPages+1):
-                print(f'[{topic}]Pages fetched:', f'{page_no}/{res.totalPages}', end='\r')
-                res = pr.search_outlets_by_topic([topic], page=page_no)
-                for idd in list(map(lambda x: x['entity']['outletId'], res.data)):
-                    outlet_ids.append(idd)
-            print(f"[{topic}]Fetched all {res.totalPages} pages!")
+            outlet_ids = list(filter(None, outlet_ids))
+            totalPages = res.totalPages
+            if totalPages > 1:
+                print(f"[{topic}] Total pages:", res.totalPages)
+                for page_no in range(2, res.totalPages+1):
+                    try:
+                        print(f'[{topic}] Pages fetched:', f'{page_no}/{res.totalPages}', end='\r')
+                        res = pr.search_outlets_by_topic([topic], page=page_no)
+                        for idd in list(map(lambda x: x['entity']['outletId'], res.data)):
+                            outlet_ids.append(idd)
+                    except: continue
+                print(f"[{topic}]Fetched all {totalPages} pages!")
 
-            parts = int(len(outlet_ids)/THREADS)
+            parts = math.ceil(len(outlet_ids)/THREADS)
             if parts == 0:
                 parts = len(outlet_ids)
-            chunks = utils.chunks(outlet_ids, parts)
+            chunks = utils.chunks(outlet_ids, parts or 1)
             threads = []
             for c in chunks:
                 x = threading.Thread(target=self.run_task, args=(c, len(outlet_ids)))
@@ -99,7 +106,7 @@ class Journalist:
             journalist_data = self.scrape_journalist(journalist_id)
             journalist_data = formatters.seperate_socials(journalist_data['Social Media Urls'], journalist_data)
             journalist_data = formatters.make_url(journalist_data, 'journalist')
-            self.bus.put_nowait(journalist_data)
+            self.bus.put(journalist_data)
             print(f'{self.bus.qsize()}/{total}', 'Journalist id:', journalist_id, end='\r')
 
     def scrape(self):

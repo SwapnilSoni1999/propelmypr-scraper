@@ -21,10 +21,11 @@ class JournalistResult():
 
 class SearchResult():
     def __init__(self, json, key, pageSize) -> None:
-        try:
-            self.data = json['payload'][key]
-            self.totalPages = math.ceil(json['payload']['total'] / pageSize)
-            self.total = json['payload']['total']
-        except:
-            print("\n\n===========")
-            print(json)
+        self.data = json['payload'][key]
+        self.totalPages = math.ceil(self.calculate_total(json['payload']['facets']['country']))
+        self.total = json['payload']['total']
+
+    def calculate_total(self, countries):
+        count = 0
+        for c in countries: count += c['count']
+        return count
